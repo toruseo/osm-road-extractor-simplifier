@@ -1,6 +1,7 @@
 # OSM Road Extractor/Simplifier
 
 OSMから主要道路だけを抜き出し，QGISなどで素早く描画できるように軽量化する．
+[readme in Engrish](README.en.md)
 
 # 環境
 
