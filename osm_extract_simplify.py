@@ -2,6 +2,8 @@
 
 import shapefile
 import copy
+import shutil
+import sys
 
 def osm_extract_simplify(src, rec, name_list, encoding="sjis", max_iter=1):
 	#read
@@ -74,7 +76,11 @@ def osm_extract_simplify(src, rec, name_list, encoding="sjis", max_iter=1):
 		w.shape(shps[i])
 	w.close()
 	
+	shutil.copy(src+".prj", rec+".prj")
+	shutil.copy(src+".cpg", rec+".cpg")
+	
 	print("COMPLETED")
 
 if __name__ == "__main__":
-	osm_extract_simplify("./shp/simple1", "./shp/out2", ["motorway", "primary", "secondary", "trunk"], encoding="sjis", max_iter=3)
+	if len(sys.argv) > 1:
+		osm_extract_simplify(sys.argv[1], sys.argv[1]+"_simplified", ["motorway", "primary", "secondary", "trunk"], encoding=sys.argv[2], max_iter=3)
