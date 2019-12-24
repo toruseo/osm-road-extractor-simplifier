@@ -7,8 +7,8 @@ OpenStreetMapの道路ネットワークデータから主要道路（motorway, 
 
 ## ファイル構成
 
-- `osm_*_major_roads`: [スクリプト](https://github.com/toruseo/osm-road-extractor-simplifier)により縮約した各地域の主要道路シェープファイル
+- `osm_*_major_roads.*`: [スクリプト](https://github.com/toruseo/osm-road-extractor-simplifier)により縮約した各地域の主要道路シェープファイル
 
-- `osm_japan_major_roads.qgz`: 全シェープを閲覧できるQGISプロジェクトファイル
+- `japan_road_network.qgz`: 全シェープを閲覧できるQGISプロジェクトファイル
 
 

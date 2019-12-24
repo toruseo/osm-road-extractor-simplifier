@@ -5,7 +5,7 @@ import copy
 import shutil
 import sys
 
-def osm_extract_simplify(src, rec, name_list, encoding="sjis", max_iter=1):
+def osm_extract_simplify(src, rec, name_list, encoding="utf8", max_iter=1):
 	#read
 	print("READING AND EXTRACTING...")
 	r = shapefile.Reader(src, encoding=encoding)
