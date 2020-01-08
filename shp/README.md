@@ -7,7 +7,9 @@ OpenStreetMapの道路ネットワークデータ（2019年12月時点）から�
 
 ## ファイル構成
 
-- `osm_*_major_roads.*`: [スクリプト](https://github.com/toruseo/osm-road-extractor-simplifier)により縮約した各地域の主要道路シェープファイル．マージすると100MBを超えるのでアップロードできません．
+- `osm_*_major_roads.*`: [スクリプト](https://github.com/toruseo/osm-road-extractor-simplifier)により縮約した各地域の主要道路シェープファイル．
+
+- `osm_japan_major_roads.zip`：上シェープをマージして圧縮したファイル．非圧縮状態だと100MBを超えてgithubにアップロードできないため．
 
 - `japan_road_network.qgz`: 全シェープを閲覧できるQGISプロジェクトファイル
 
