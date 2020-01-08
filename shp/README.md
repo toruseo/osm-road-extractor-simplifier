@@ -11,6 +11,8 @@ OpenStreetMapの道路ネットワークデータ（2019年12月時点）から�
 
 - `osm_japan_major_roads.zip`：上シェープをマージして圧縮したファイル．非圧縮状態だと100MBを超えてgithubにアップロードできないため．
 
-- `japan_road_network.qgz`: 全シェープを閲覧できるQGISプロジェクトファイル
+- `japan_road_network.qgz`: 全シェープを閲覧できるQGISプロジェクトファイル．以下のような見た目になる．
+
+<img src="https://toruseo.github.io/misc/osm_ext_simp.jpg" width="480pt">
 
 
