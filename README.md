@@ -19,7 +19,7 @@ Python 3.*
 
 1. OSMの道路シェープファイルを入手（例：http://download.geofabrik.de/ ）
 
-2. 同梱スクリプト`osm_extract_simplify.py`と`shapefile.py`（[`pyshp`](https://github.com/GeospatialPython/pyshp)）を適当な場所に置く．
+2. 同梱スクリプト`osm_extract_simplify.py`と`shapefile.py`（[pyshp](https://github.com/GeospatialPython/pyshp)）を適当な場所に置く．
 
 3. 以下のようなPythonコードを実行
 ```python
