@@ -43,6 +43,10 @@ python osm_extract_simplify ./sample/shapefile1 utf8
 
 <img src="https://toruseo.github.io/misc/osm_ext_simp.jpg" width="480pt">
 
+# 軽量化済みデータ
+
+日本の軽量化済みデータを[shp](https://github.com/toruseo/osm-road-extractor-simplifier/tree/master/shp)フォルダ内に置いてある．
+
 # License
 
 MIT License
