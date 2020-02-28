@@ -9,6 +9,15 @@ This extracts major roads from OSM and simplify them in order to smoothly visual
 "Simplify" means that it merges neighboring polylines with the same `name` or `ref` attributes.
 It does not change visual shape of road networks.
 
+Based on output shapfiles, you can draw a map like below by labeling `name` and `ref`.
+You can also choose specific roads by filtering by `ref`.
+
+<img src="https://toruseo.github.io/misc/osm_ext_simp.jpg" width="480pt">
+
+# Processed data
+
+Processed data (Japanese road map) is available from the [release](https://github.com/toruseo/osm-road-extractor-simplifier/releases) of this repo.
+
 # Requirement
 
 Python 3.*
@@ -31,11 +40,6 @@ osm_extract_simplify(
     max_iter=3                #Maximum number of iterations for simplification
 )
 ```
-
-4. You can draw a map like below by labeling `name` and `ref`.
-You can also choose specific roads by filtering by `ref`.
-
-<img src="https://toruseo.github.io/misc/osm_ext_simp.jpg" width="480pt">
 
 # License
 
