@@ -18,7 +18,7 @@ OSMから主要道路だけを抜き出し，QGISなどで素早く描画でき�
 
 # 軽量化済みデータ
 
-本スクリプトによる日本の軽量化済みデータを本レポジトリの[release内](https://github.com/toruseo/osm-road-extractor-simplifier/releases/download/v2019.0.0/shp.zip)に置いてある．
+本スクリプトによる日本の軽量化済みデータを本レポジトリの[release内](https://github.com/toruseo/osm-road-extractor-simplifier/releases/download/v2019.0.1/shp.zip)に置いてある．
 
 # 環境
 
