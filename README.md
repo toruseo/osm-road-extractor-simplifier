@@ -18,7 +18,7 @@ OSMから主要道路だけを抜き出し，QGISなどで素早く描画でき�
 
 # 軽量化済みデータ
 
-本スクリプトによる日本の軽量化済みデータを[shp](https://github.com/toruseo/osm-road-extractor-simplifier/tree/master/shp)フォルダ内に置いてある．
+本スクリプトによる日本の軽量化済みデータを本レポジトリの[release](https://github.com/toruseo/osm-road-extractor-simplifier/releases)に置いてある．
 
 # 環境
 
@@ -49,5 +49,4 @@ osm_extract_simplify(
 
 # License
 
-- スクリプト：MIT License
-- データ：Open Data Commons Open Database License (ODbL)
+MIT License
