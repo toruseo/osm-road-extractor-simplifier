@@ -131,3 +131,5 @@ dmypy.json
 # too big to upload
 shp/osm_japan_major_roads*
 !shp/osm_japan_major_roads.zip
+
+shp/
