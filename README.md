@@ -11,6 +11,11 @@ OSMから主要道路だけを抜き出し，QGISなどで素早く描画でき�
 ここで，縮約とは，同じ`name`もしくは`ref`属性を持つ隣接しあったpolylineを一つのpolylineにすることを意味する．
 見た目の形状は変化しない．
 
+軽量化したデータをQGISで`name`と`ref`をラベルにして描画すると以下のような見た目になる．
+`ref`でフィルタリングすると道路番号から大まかに道路を選択できる．
+
+<img src="https://toruseo.github.io/misc/osm_ext_simp.jpg" width="480pt">
+
 # 軽量化済みデータ
 
 本スクリプトによる日本の軽量化済みデータを[shp](https://github.com/toruseo/osm-road-extractor-simplifier/tree/master/shp)フォルダ内に置いてある．
@@ -37,16 +42,12 @@ osm_extract_simplify(
     max_iter=3                #縮約操作繰り返し回数．
 )
 ```
-もしくは以下のようなコマンドを実行
-```
-python osm_extract_simplify ./sample/shapefile1 utf8
-```
 
-4. QGISで`name`と`ref`をラベルにすると以下のような地図が描ける．
-`ref`でフィルタリングすると道路番号から大まかに道路を選択できる．
+# 製作者
 
-<img src="https://toruseo.github.io/misc/osm_ext_simp.jpg" width="480pt">
+瀬尾亨
 
 # License
 
-MIT License
+- スクリプト：MIT License
+- データ：Open Data Commons Open Database License (ODbL)
