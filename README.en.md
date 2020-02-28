@@ -36,7 +36,7 @@ osm_extract_simplify(
     "./shp/osm_tokyo_major",  #input shapefile
     "./shp/out",              #output shapefile
     ["motorway", "primary", "secondary", "trunk"],    #extraction class. The corresponding "*_link" will be automatically extracted as well
-    encoding="sjis",          #encoding
+    encoding="utf8",          #encoding
     max_iter=3                #Maximum number of iterations for simplification
 )
 ```
