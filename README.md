@@ -3,7 +3,7 @@
 OSMから主要道路だけを抜き出し，QGISなどで素早く描画できるように軽量化する．
 [readme in English](README.en.md)
 
-これにより処理した日本道路地図をウェブブラウザで簡易に閲覧できるようにしました：https://toruseo.jp/OSM-road-viewer/
+これにより処理した日本道路地図をウェブブラウザで簡易に閲覧できるようにしました：https://toruseo.jp/road-viewer-finder/
 
 # 機能
 
