@@ -7,10 +7,11 @@ OSMから主要道路だけを抜き出し，QGISなどで素早く描画でき�
 
 # 機能
 
-- 特定の種別（`fclass`）を持つ道路リンクのみ抽出する．
+- `.osm.pbf`ファイルから特定の種別（`highway`タグ）を持つ道路リンクのみ抽出する．
 - 道路リンクを縮約し，軽量化する．
 ここで，縮約とは，同じ`name`もしくは`ref`属性を持つ隣接しあったpolylineを一つのpolylineにすることを意味する．
 見た目の形状は変化しない．
+- 道路種別ごと（motorway, trunk, primary, secondary）にGeoJSONファイルとして出力する．
 
 軽量化したデータをQGISで`name`と`ref`をラベルにして描画すると以下のような見た目になる．
 `ref`でフィルタリングすると道路番号から大まかに道路を選択できる．
@@ -19,30 +20,57 @@ OSMから主要道路だけを抜き出し，QGISなどで素早く描画でき�
 
 # 軽量化済みデータ
 
-本スクリプトによる日本の軽量化済みデータを本レポジトリの[release内](https://github.com/toruseo/osm-road-extractor-simplifier/releases/download/v2019.0.1/shp.zip)に置いてある．
+本スクリプトによる日本の軽量化済みデータを本レポジトリの[release内](https://github.com/toruseo/osm-road-extractor-simplifier/releases/download/v2019.0.1/shp.zip)に置いてある．TODO: 要更新
 
 # 環境
 
-Python 3.*
+- Python 3.*
+- [pyosmium](https://osmcode.org/pyosmium/) (`pip install osmium`)
+
+```
+pip install -r requirements.txt
+```
 
 # 使い方
 
-1. OSMの道路シェープファイルを入手（例：http://download.geofabrik.de/ ）
+1. OSMの`.osm.pbf`ファイルを入手（例：http://download.geofabrik.de/ ）
 
-2. 同梱スクリプト`osm_extract_simplify.py`と`shapefile.py`（[pyshp](https://github.com/GeospatialPython/pyshp)）を適当な場所に置く．
-
-3. 以下のようなPythonコードを実行
-```python
-from osm_extract_simplify import osm_extract_simplify
-
-osm_extract_simplify(
-    "./shp/osm_tokyo_major",  #入力シェープファイル
-    "./shp/out",              #出力シェープファイル
-    ["motorway", "primary", "secondary", "trunk"],    #抽出対象道路種別．対応する*_linkは自動的に抽出される
-    encoding="utf8",          #シェープファイルの文字コード
-    max_iter=3                #縮約操作繰り返し回数．
-)
+2. 依存パッケージをインストール
 ```
+pip install -r requirements.txt
+```
+
+3. コマンドラインから実行
+```bash
+python osm_extract_simplify.py input.osm.pbf -o ./output
+```
+
+### オプション
+
+| オプション | 説明 | デフォルト |
+|-----------|------|-----------|
+| `-o`, `--output` | 出力ディレクトリ | `.`（カレントディレクトリ） |
+| `-c`, `--classes` | 抽出対象道路種別 | `motorway trunk primary secondary` |
+| `-i`, `--max-iter` | 縮約操作繰り返し回数 | `3` |
+
+### 例
+
+```bash
+# 全種別を抽出
+python osm_extract_simplify.py japan-latest.osm.pbf -o ./output
+
+# primaryとsecondaryのみ抽出
+python osm_extract_simplify.py japan-latest.osm.pbf -o ./output -c primary secondary
+
+# 縮約回数を増やす
+python osm_extract_simplify.py japan-latest.osm.pbf -o ./output -i 5
+```
+
+出力ファイル：
+- `osm_motorway.geojson`
+- `osm_trunk.geojson`
+- `osm_primary.geojson`
+- `osm_secondary.geojson`
 
 # 製作者
 

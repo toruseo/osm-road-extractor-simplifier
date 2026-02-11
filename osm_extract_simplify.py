@@ -1,86 +1,194 @@
-#coding:utf-8
+# coding: utf-8
 
-import shapefile
+import argparse
 import copy
-import shutil
+import json
+import os
 import sys
+from collections import defaultdict
+from dataclasses import dataclass, field
 
-def osm_extract_simplify(src, rec, name_list, encoding="utf8", max_iter=1):
-	#read
-	print("READING AND EXTRACTING...")
-	r = shapefile.Reader(src, encoding=encoding)
-	
-	shps = []
-	recs = []
-	
-	for i in range(len(r)):
-		if r.record(i)[2] in name_list + [s+"_link" for s in name_list]:
-			shps.append(r.shape(i))
-			recs.append(r.record(i))
-			
-			if recs[-1][2] in [s+"_link" for s in name_list]:
-				recs[-1][2] = recs[-1][2][:-5]
-	
-	r.close()
-	
-	print("original size:", len(r))
-	print("extracted size:", len(recs))
-	
-	#combine
-	print("COMBINING...")
-	for iter in range(max_iter):
-		print("iteration", iter)
-		
-		shps_new = []
-		recs_new = []
-		i_removed = {i:False for i in range(len(shps))}
-		for i in range(len(shps)):
-			if i_removed[i] == False:
-				shp = copy.copy(shps[i])
-				for j in range(i+1, len(shps)):
-					if i_removed[j] == False:
-						#interpolate name or ref
-						if recs[i][2] == recs[j][2]:
-							for ii,jj,k1,k2 in [[i,j,3,4], [i,j,4,3], [j,i,3,4], [j,i,4,3]]:
-								if recs[ii][k1] == recs[jj][k1]:
-									if recs[ii][k2] == "" and recs[jj][k2] != "":
-										recs[ii][k2] = recs[jj][k2]
-							#do combine
-							if recs[i][3] == recs[j][3] and recs[i][4] == recs[j][4]:
-								if shp.points[-1] == shps[j].points[0] or shp.points[0] == shps[j].points[-1]:
-									if shp.points[-1] == shps[j].points[0]:
-										shp.points = shp.points + shps[j].points
-									else:
-										shp.points = shps[j].points + shp.points
-									shp.bbox = [
-										min([shps[i].bbox[0], shps[j].bbox[0]]), min([shps[i].bbox[1], shps[j].bbox[1]]),
-										max([shps[i].bbox[2], shps[j].bbox[2]]), max([shps[i].bbox[3], shps[j].bbox[3]])
-									]
-									print("combined", i, j, recs[i][2], recs[i][4], recs[i][3])
-									i_removed[j] = True
-				shps_new.append(shp)
-				recs_new.append(recs[i])
-		
-		print("#"*80, "\n", len(shps_new), "/", len(shps), "\n", "#"*80, sep="")
-		if len(shps_new) == len(shps):
-			break
-		
-		shps = copy.copy(shps_new)
-		recs = copy.copy(recs_new)
-	
-	print("WRITING...")
-	w = shapefile.Writer(rec, encoding=encoding)
-	w.fields = r.fields[1:] # skip first deletion field
-	for i in range(len(shps)):
-		w.record(*recs[i])
-		w.shape(shps[i])
-	w.close()
-	
-	shutil.copy(src+".prj", rec+".prj")
-	shutil.copy(src+".cpg", rec+".cpg")
-	
-	print("COMPLETED")
+import osmium
+
+if sys.stdout.encoding and sys.stdout.encoding.lower().replace("-", "") != "utf8":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+
+@dataclass
+class RoadSegment:
+    fclass: str       # "motorway", "trunk", "primary", "secondary"
+    name: str         # 道路名（""=未設定）
+    ref: str          # 路線番号（""=未設定）
+    points: list = field(default_factory=list)  # [(lon, lat), ...]
+
+
+TARGET_CLASSES = ["motorway", "trunk", "primary", "secondary"]
+
+
+class RoadHandler(osmium.SimpleHandler):
+    def __init__(self, target_classes):
+        super().__init__()
+        self.segments = []
+        self._targets = set(target_classes)
+        self._link_targets = {c + "_link" for c in target_classes}
+
+    def way(self, w):
+        highway = w.tags.get("highway", "")
+        if highway in self._targets:
+            fclass = highway
+        elif highway in self._link_targets:
+            fclass = highway[:-5]  # strip "_link"
+        else:
+            return
+
+        try:
+            points = [(n.lon, n.lat) for n in w.nodes]
+        except osmium.InvalidLocationError:
+            return
+
+        if len(points) < 2:
+            return
+
+        self.segments.append(RoadSegment(
+            fclass=fclass,
+            name=w.tags.get("name", ""),
+            ref=w.tags.get("ref", ""),
+            points=points,
+        ))
+
+
+def read_pbf(path, target_classes):
+    handler = RoadHandler(target_classes)
+    handler.apply_file(path, locations=True, idx="flex_mem")
+    return handler.segments
+
+
+def interpolate_attributes(seg_i, seg_j):
+    """隣接するセグメント間で name/ref を補完する。"""
+    for src, dst in [(seg_i, seg_j), (seg_j, seg_i)]:
+        if src.name != "" and src.name == dst.name:
+            if dst.ref == "" and src.ref != "":
+                dst.ref = src.ref
+        if src.ref != "" and src.ref == dst.ref:
+            if dst.name == "" and src.name != "":
+                dst.name = src.name
+
+
+def are_adjacent(seg_a, seg_b):
+    """2つのセグメントの端点が接続しているか判定する。"""
+    return (seg_a.points[-1] == seg_b.points[0] or
+            seg_a.points[0] == seg_b.points[-1])
+
+
+def combine_segments(segments, max_iter=3):
+    for iteration in range(max_iter):
+        print(f"iteration {iteration}")
+
+        new_segments = []
+        removed = [False] * len(segments)
+
+        for i in range(len(segments)):
+            if removed[i]:
+                continue
+
+            seg = copy.copy(segments[i])
+            seg.points = list(seg.points)
+
+            for j in range(i + 1, len(segments)):
+                if removed[j]:
+                    continue
+                if seg.fclass != segments[j].fclass:
+                    continue
+
+                # バグ修正: 隣接チェック後に属性補完を実行
+                if not are_adjacent(seg, segments[j]):
+                    continue
+
+                interpolate_attributes(seg, segments[j])
+
+                if seg.name == segments[j].name and seg.ref == segments[j].ref:
+                    # 結合
+                    if seg.points[-1] == segments[j].points[0]:
+                        seg.points = seg.points + segments[j].points
+                    else:
+                        seg.points = segments[j].points + seg.points
+                    print(f"combined {i} {j} {seg.fclass} {seg.ref} {seg.name}")
+                    removed[j] = True
+
+            new_segments.append(seg)
+
+        print(f"{'#' * 80}\n{len(new_segments)}/{len(segments)}\n{'#' * 80}")
+        if len(new_segments) == len(segments):
+            break
+
+        segments = new_segments
+
+    return segments
+
+
+def write_geojson(segments, output_dir):
+    os.makedirs(output_dir, exist_ok=True)
+
+    grouped = defaultdict(list)
+    for seg in segments:
+        grouped[seg.fclass].append(seg)
+
+    written = []
+    for fclass, segs in sorted(grouped.items()):
+        features = []
+        for seg in segs:
+            features.append({
+                "type": "Feature",
+                "properties": {
+                    "fclass": seg.fclass,
+                    "name": seg.name,
+                    "ref": seg.ref,
+                },
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": seg.points,
+                },
+            })
+
+        geojson = {
+            "type": "FeatureCollection",
+            "features": features,
+        }
+
+        filename = f"osm_{fclass}.geojson"
+        filepath = os.path.join(output_dir, filename)
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(geojson, f, ensure_ascii=False)
+
+        print(f"wrote {filepath} ({len(features)} features)")
+        written.append(filepath)
+
+    return written
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="OSM PBF から主要道路を抽出・結合し GeoJSON で出力する")
+    parser.add_argument("input", help="入力 .osm.pbf ファイル")
+    parser.add_argument("-o", "--output", default=".", help="出力ディレクトリ (default: .)")
+    parser.add_argument("-c", "--classes", nargs="+", default=TARGET_CLASSES,
+                        help="対象道路種別 (default: motorway trunk primary secondary)")
+    parser.add_argument("-i", "--max-iter", type=int, default=3,
+                        help="結合イテレーション回数 (default: 3)")
+    args = parser.parse_args()
+
+    print("READING AND EXTRACTING...")
+    segments = read_pbf(args.input, args.classes)
+    print(f"extracted size: {len(segments)}")
+
+    print("COMBINING...")
+    segments = combine_segments(segments, max_iter=args.max_iter)
+
+    print("WRITING...")
+    write_geojson(segments, args.output)
+
+    print("COMPLETED")
+
 
 if __name__ == "__main__":
-	if len(sys.argv) > 1:
-		osm_extract_simplify(sys.argv[1], sys.argv[1]+"_simplified", ["motorway", "primary", "secondary", "trunk"], encoding=sys.argv[2], max_iter=3)
+    main()
