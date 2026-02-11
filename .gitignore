@@ -133,5 +133,7 @@ shp/
 # Data files
 *.osm.pbf
 *.geojson
+*.geojson.gz
+
 
 .claude/
