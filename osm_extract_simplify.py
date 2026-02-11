@@ -3,6 +3,7 @@
 import argparse
 import copy
 import json
+import math
 import os
 import sys
 from collections import defaultdict
@@ -107,11 +108,11 @@ def combine_segments(segments, max_iter=3):
                 interpolate_attributes(seg, segments[j])
 
                 if seg.name == segments[j].name and seg.ref == segments[j].ref:
-                    # 結合
+                    # 結合（接続点の重複を除去）
                     if seg.points[-1] == segments[j].points[0]:
-                        seg.points = seg.points + segments[j].points
+                        seg.points = seg.points + segments[j].points[1:]
                     else:
-                        seg.points = segments[j].points + seg.points
+                        seg.points = segments[j].points + seg.points[1:]
                     print(f"combined {i} {j} {seg.fclass} {seg.ref} {seg.name}")
                     removed[j] = True
 
@@ -123,6 +124,38 @@ def combine_segments(segments, max_iter=3):
 
         segments = new_segments
 
+    return segments
+
+
+def haversine(lon1, lat1, lon2, lat2):
+    """2点間の距離をメートルで返す（Haversine公式）"""
+    R = 6_371_000
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = (math.sin(dlat / 2) ** 2
+         + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2))
+         * math.sin(dlon / 2) ** 2)
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def thin_points(segments, min_dist=10.0):
+    """隣接点間の距離がmin_dist以下の中間点を省略する。始点・終点は常に保持。"""
+    total_before = 0
+    total_after = 0
+    for seg in segments:
+        total_before += len(seg.points)
+        if len(seg.points) <= 2:
+            total_after += len(seg.points)
+            continue
+        kept = [seg.points[0]]
+        for pt in seg.points[1:-1]:
+            if haversine(kept[-1][0], kept[-1][1], pt[0], pt[1]) > min_dist:
+                kept.append(pt)
+        kept.append(seg.points[-1])
+        seg.points = kept
+        total_after += len(kept)
+    print(f"thinned points: {total_before:,} -> {total_after:,} "
+          f"({total_before - total_after:,} removed)")
     return segments
 
 
@@ -183,6 +216,9 @@ def main():
 
     print("COMBINING...")
     segments = combine_segments(segments, max_iter=args.max_iter)
+
+    print("THINNING...")
+    segments = thin_points(segments, min_dist=10.0)
 
     print("WRITING...")
     write_geojson(segments, args.output)

@@ -134,6 +134,7 @@ shp/
 *.osm.pbf
 *.geojson
 *.geojson.gz
+output/*
 
 
 .claude/
