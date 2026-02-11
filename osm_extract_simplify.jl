@@ -158,48 +158,6 @@ function combine_segments(segments::Vector{RoadSegment}, max_iter::Int=3)
     return segments
 end
 
-# ─── Haversine ────────────────────────────────────────────────
-
-function haversine(lon1::Float64, lat1::Float64, lon2::Float64, lat2::Float64)::Float64
-    R = 6_371_000.0
-    dlat = deg2rad(lat2 - lat1)
-    dlon = deg2rad(lon2 - lon1)
-    a = sin(dlat / 2)^2 + cos(deg2rad(lat1)) * cos(deg2rad(lat2)) * sin(dlon / 2)^2
-    return R * 2 * atan(sqrt(a), sqrt(1 - a))
-end
-
-# ─── 近接点省略 ───────────────────────────────────────────────
-
-function thin_points!(segments::Vector{RoadSegment}, min_dist::Float64=10.0)
-    total_before = 0
-    total_after = 0
-
-    for seg in segments
-        total_before += length(seg.points)
-        if length(seg.points) <= 2
-            total_after += length(seg.points)
-            continue
-        end
-
-        kept = [seg.points[1]]
-        for k in 2:length(seg.points)-1
-            pt = seg.points[k]
-            last_kept = kept[end]
-            if haversine(last_kept[1], last_kept[2], pt[1], pt[2]) > min_dist
-                push!(kept, pt)
-            end
-        end
-        push!(kept, seg.points[end])
-
-        seg.points = kept
-        total_after += length(kept)
-    end
-
-    removed = total_before - total_after
-    println("thinned points: $total_before -> $total_after ($removed removed)")
-    return segments
-end
-
 # ─── GeoJSON 出力 ─────────────────────────────────────────────
 
 function write_geojson(segments::Vector{RoadSegment}, output_dir::String)
@@ -291,9 +249,6 @@ function main()
 
     println("COMBINING...")
     segments = combine_segments(segments, max_iter)
-
-    println("THINNING...")
-    thin_points!(segments, 10.0)
 
     println("WRITING...")
     write_geojson(segments, output_dir)
