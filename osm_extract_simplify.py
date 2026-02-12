@@ -2,6 +2,7 @@
 
 import argparse
 import copy
+import gzip
 import json
 import os
 import sys
@@ -84,36 +85,55 @@ def combine_segments(segments, max_iter=3):
     for iteration in range(max_iter):
         print(f"iteration {iteration}")
 
+        # 端点からセグメントインデックスへの辞書を構築（O(n)）
+        start_map = defaultdict(set)  # (fclass, 始点座標) -> {index, ...}
+        end_map = defaultdict(set)    # (fclass, 終点座標) -> {index, ...}
+        for idx, seg in enumerate(segments):
+            start_map[(seg.fclass, seg.points[0])].add(idx)
+            end_map[(seg.fclass, seg.points[-1])].add(idx)
+
         new_segments = []
-        removed = [False] * len(segments)
+        removed = set()
 
         for i in range(len(segments)):
-            if removed[i]:
+            if i in removed:
                 continue
 
             seg = copy.copy(segments[i])
             seg.points = list(seg.points)
 
-            for j in range(i + 1, len(segments)):
-                if removed[j]:
-                    continue
-                if seg.fclass != segments[j].fclass:
-                    continue
+            # 端点辞書で隣接セグメントを探索し結合（結合後は端点が変わるので再探索）
+            merged = True
+            while merged:
+                merged = False
 
-                # バグ修正: 隣接チェック後に属性補完を実行
-                if not are_adjacent(seg, segments[j]):
-                    continue
+                # 候補収集: seg の終点 == 候補の始点、または seg の始点 == 候補の終点
+                candidates = set()
+                for j in start_map.get((seg.fclass, seg.points[-1]), ()):
+                    if j > i and j not in removed:
+                        candidates.add(j)
+                for j in end_map.get((seg.fclass, seg.points[0]), ()):
+                    if j > i and j not in removed:
+                        candidates.add(j)
 
-                interpolate_attributes(seg, segments[j])
+                for j in sorted(candidates):
+                    if j in removed:
+                        continue
+                    if not are_adjacent(seg, segments[j]):
+                        continue
 
-                if seg.name == segments[j].name and seg.ref == segments[j].ref:
-                    # 結合
-                    if seg.points[-1] == segments[j].points[0]:
-                        seg.points = seg.points + segments[j].points
-                    else:
-                        seg.points = segments[j].points + seg.points
-                    print(f"combined {i} {j} {seg.fclass} {seg.ref} {seg.name}")
-                    removed[j] = True
+                    interpolate_attributes(seg, segments[j])
+
+                    if seg.name == segments[j].name and seg.ref == segments[j].ref:
+                        # 結合
+                        if seg.points[-1] == segments[j].points[0]:
+                            seg.points = seg.points + segments[j].points
+                        else:
+                            seg.points = segments[j].points + seg.points
+                        print(f"combined {i} {j} {seg.fclass} {seg.ref} {seg.name}")
+                        removed.add(j)
+                        merged = True
+                        break  # 端点が変わったので再探索
 
             new_segments.append(seg)
 
@@ -160,13 +180,22 @@ def write_geojson(segments, output_dir):
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(geojson, f, ensure_ascii=False)
 
-        print(f"wrote {filepath} ({len(features)} features)")
+        gz_filepath = filepath + ".gz"
+        with gzip.open(gz_filepath, "wt", encoding="utf-8") as f:
+            json.dump(geojson, f, ensure_ascii=False)
+
+        print(f"wrote {filepath} + .gz ({len(features)} features)")
         written.append(filepath)
 
     return written
 
 
 def main():
+	"""
+	コマンドライン例：
+	python .\osm_extract_simplify.py japan-260209.osm.pbf -o output -i 10
+	"""
+	
     parser = argparse.ArgumentParser(
         description="OSM PBF から主要道路を抽出・結合し GeoJSON で出力する")
     parser.add_argument("input", help="入力 .osm.pbf ファイル")

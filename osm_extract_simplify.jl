@@ -3,6 +3,7 @@
 
 using OpenStreetMapPBF
 using JSON
+using CodecZlib
 
 # ─── データ構造 ───────────────────────────────────────────────
 
@@ -111,33 +112,63 @@ function combine_segments(segments::Vector{RoadSegment}, max_iter::Int=3)
         println("iteration $iteration")
 
         n = length(segments)
-        removed = falses(n)
+
+        # 端点からセグメントインデックスへの辞書を構築（O(n)）
+        start_map = Dict{Tuple{String,Tuple{Float64,Float64}}, Set{Int}}()
+        end_map   = Dict{Tuple{String,Tuple{Float64,Float64}}, Set{Int}}()
+        for idx in 1:n
+            seg = segments[idx]
+            sk = (seg.fclass, seg.points[1])
+            ek = (seg.fclass, seg.points[end])
+            push!(get!(start_map, sk, Set{Int}()), idx)
+            push!(get!(end_map,   ek, Set{Int}()), idx)
+        end
+
+        removed = Set{Int}()
         new_segments = RoadSegment[]
 
         for i in 1:n
-            removed[i] && continue
+            i in removed && continue
 
             seg = RoadSegment(segments[i].fclass, segments[i].name,
                               segments[i].ref, copy(segments[i].points))
 
-            for j in i+1:n
-                removed[j] && continue
-                seg.fclass != segments[j].fclass && continue
+            # 端点辞書で隣接セグメントを探索し結合（結合後は端点が変わるので再探索）
+            merged = true
+            while merged
+                merged = false
 
-                # 隣接チェック後に属性補完を実行
-                are_adjacent(seg, segments[j]) || continue
-
-                interpolate_attributes!(seg, segments[j])
-
-                if seg.name == segments[j].name && seg.ref == segments[j].ref
-                    # 結合（接続点の重複を除去）
-                    if seg.points[end] == segments[j].points[1]
-                        append!(seg.points, @view segments[j].points[2:end])
-                    else
-                        seg.points = vcat(segments[j].points, @view seg.points[2:end])
+                # 候補収集: seg の終点 == 候補の始点、または seg の始点 == 候補の終点
+                candidates = Set{Int}()
+                for j in get(start_map, (seg.fclass, seg.points[end]), ())
+                    if j > i && !(j in removed)
+                        push!(candidates, j)
                     end
-                    println("combined $i $j $(seg.fclass) $(seg.ref) $(seg.name)")
-                    removed[j] = true
+                end
+                for j in get(end_map, (seg.fclass, seg.points[1]), ())
+                    if j > i && !(j in removed)
+                        push!(candidates, j)
+                    end
+                end
+
+                for j in sort!(collect(candidates))
+                    j in removed && continue
+                    are_adjacent(seg, segments[j]) || continue
+
+                    interpolate_attributes!(seg, segments[j])
+
+                    if seg.name == segments[j].name && seg.ref == segments[j].ref
+                        # 結合（接続点の重複を除去）
+                        if seg.points[end] == segments[j].points[1]
+                            append!(seg.points, @view segments[j].points[2:end])
+                        else
+                            seg.points = vcat(segments[j].points, @view seg.points[2:end])
+                        end
+                        println("combined $i $j $(seg.fclass) $(seg.ref) $(seg.name)")
+                        push!(removed, j)
+                        merged = true
+                        break  # 端点が変わったので再探索
+                    end
                 end
             end
 
@@ -197,7 +228,14 @@ function write_geojson(segments::Vector{RoadSegment}, output_dir::String)
             JSON.print(f, geojson)
         end
 
-        println("wrote $filepath ($(length(features)) features)")
+        gz_filepath = filepath * ".gz"
+        open(gz_filepath, "w") do f
+            gzf = GzipCompressorStream(f)
+            JSON.print(gzf, geojson)
+            close(gzf)
+        end
+
+        println("wrote $filepath + .gz ($(length(features)) features)")
     end
 end
 
