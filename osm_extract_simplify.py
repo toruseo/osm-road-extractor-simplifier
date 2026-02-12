@@ -166,7 +166,7 @@ def write_geojson(segments, output_dir):
                 },
                 "geometry": {
                     "type": "LineString",
-                    "coordinates": seg.points,
+                    "coordinates": [(round(lon, 5), round(lat, 5)) for lon, lat in seg.points],
                 },
             })
 
@@ -178,11 +178,11 @@ def write_geojson(segments, output_dir):
         filename = f"osm_{fclass}.geojson"
         filepath = os.path.join(output_dir, filename)
         with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(geojson, f, ensure_ascii=False)
+            json.dump(geojson, f, ensure_ascii=False, separators=(',', ':'))
 
         gz_filepath = filepath + ".gz"
         with gzip.open(gz_filepath, "wt", encoding="utf-8") as f:
-            json.dump(geojson, f, ensure_ascii=False)
+            json.dump(geojson, f, ensure_ascii=False, separators=(',', ':'))
 
         print(f"wrote {filepath} + .gz ({len(features)} features)")
         written.append(filepath)
@@ -191,11 +191,10 @@ def write_geojson(segments, output_dir):
 
 
 def main():
-	"""
-	コマンドライン例：
-	python .\osm_extract_simplify.py japan-260209.osm.pbf -o output -i 10
-	"""
-	
+    """
+    コマンドライン例：
+    python osm_extract_simplify.py japan-260209.osm.pbf -o output -i 10
+    """
     parser = argparse.ArgumentParser(
         description="OSM PBF から主要道路を抽出・結合し GeoJSON で出力する")
     parser.add_argument("input", help="入力 .osm.pbf ファイル")

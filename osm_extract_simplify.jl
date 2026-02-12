@@ -213,7 +213,7 @@ function write_geojson(segments::Vector{RoadSegment}, output_dir::String)
                 ),
                 "geometry" => Dict{String,Any}(
                     "type" => "LineString",
-                    "coordinates" => [collect(pt) for pt in seg.points],
+                    "coordinates" => [[round(pt[1], digits=5), round(pt[2], digits=5)] for pt in seg.points],
                 ),
             )
         end
@@ -240,6 +240,9 @@ function write_geojson(segments::Vector{RoadSegment}, output_dir::String)
 end
 
 # ─── メイン ───────────────────────────────────────────────────
+
+# コマンドライン例：
+# julia osm_extract_simplify.jl japan-260209.osm.pbf -o output -i 10
 
 function main()
     if length(ARGS) < 1
